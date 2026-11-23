@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17202d">
+<title>قیمتِ یک دقیقه | بازی تعاملی مرتو</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+:root{--bg:#111a27;--card:#1b293a;--edge:#34475d;--ink:#f4f6fa;--soft:#b5c2d2;--mint:#a8e3d1;--gold:#f3c978;--red:#f18c83}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0,#2b4056,#111a27 60%);color:var(--ink);font:16px/1.85 Vazirmatn,Tahoma,sans-serif;min-height:100vh}
+main{max-width:760px;margin:auto;padding:16px 14px 36px}.top{display:flex;align-items:center;justify-content:space-between;color:var(--soft);font-size:.82rem;margin:5px 0 14px}.brand{font-weight:800;color:var(--mint)}
+.meter{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.stat{background:#172333;border:1px solid var(--edge);border-radius:14px;padding:10px 13px}.stat small{display:block;color:var(--soft);font-size:.75rem}.stat strong{font-size:1.25rem}.bar{height:5px;background:#344358;border-radius:9px;overflow:hidden;margin-bottom:18px}.bar>div{height:100%;background:var(--gold);transition:width .25s}
+.card{background:rgba(27,41,58,.97);border:1px solid var(--edge);border-radius:23px;padding:clamp(19px,5vw,33px);box-shadow:0 20px 60px #0003}.kicker{color:var(--gold);font-size:.8rem;font-weight:700;margin:0 0 7px}h1{font-size:clamp(1.65rem,5vw,2.4rem);line-height:1.4;margin:0 0 13px}p{margin:0 0 14px}.lead{color:#fff;font-size:1.02rem}.scene{background:#121d2b;border:1px solid #3b4c61;border-radius:16px;padding:15px 17px;margin:18px 0}.scene b{color:var(--mint)}.note{font-size:.82rem;color:var(--soft)}.choices{display:grid;gap:10px;margin-top:20px}.choice{border:1px solid #43566d;border-radius:14px;background:#26374b;color:var(--ink);text-align:right;padding:13px 15px;font:inherit;cursor:pointer;transition:.15s}.choice:hover,.choice:focus-visible{border-color:var(--mint);background:#30465b;outline:2px solid #a8e3d155}.choice strong{display:block}.choice span{display:block;color:var(--soft);font-size:.82rem}.price{float:left;color:var(--gold);font-size:.85rem;font-weight:800}.btn{border:0;border-radius:13px;padding:12px 19px;font:700 1rem Vazirmatn,sans-serif;cursor:pointer}.primary{background:var(--mint);color:#10231d}.secondary{background:#34485f;color:white}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.ending{border-right:3px solid var(--gold);padding:5px 13px;margin:18px 0}.small{font-size:.78rem;color:var(--soft)}footer{text-align:center;color:#7f91a8;font-size:.75rem;margin:16px 0}
+@media(max-width:400px){.meter{gap:7px}.stat{padding:8px 10px}.choice{padding:12px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head>
+<body><main>
+<div class="top"><span class="brand">مِرتو | بازی تعاملی</span><span id="stage">بازار زمان</span></div>
+<div class="meter"><div class="stat"><small>زمان باقی‌مانده</small><strong><span id="time">240</span> دقیقه</strong></div><div class="stat"><small>آنچه برایت مهم شد</small><strong id="focus">هنوز معلوم نیست</strong></div></div>
+<div class="bar" aria-label="زمان باقی‌مانده"><div id="bar" style="width:100%"></div></div>
+<section class="card" id="game" aria-live="polite"></section>
+<footer>زمان‌های بازی نمادین‌اند؛ این تجربه نسخه‌ای علمی از ارزش‌گذاری زندگی نیست.</footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const state={minutes:240,turn:0,spent:0,rest:0,people:0,meaning:0,escape:0,choices:[],debt:0};
+const scenes=[
+{title:'دروازه بازار',kicker:'چهار ساعت در اختیارت است',text:'در شهری بی‌نام، بازاری پیدا کرده‌ای که پول قبول نمی‌کند. هر غرفه بخشی از وقتت را می‌گیرد؛ در عوض، چیزی به تو می‌دهد. ساعت بالای دروازه می‌گوید: ۲۴۰ دقیقه. همین مقدار برای این تجربه داری.',quote:'فروشنده: «وقتت را نمی‌توانی پس بگیری. اما می‌توانی انتخاب کنی خرج چه چیزی شود.»',choices:[
+{t:'تماس با کسی که دلتنگش شدی',d:'یک گفت‌وگوی واقعی، بدون عجله.',cost:25,kind:'people',next:'warm'},
+{t:'تماشای سرگرمی بی‌پایان',d:'هر کلیپ فقط چند دقیقه؛ یکی پشت دیگری.',cost:50,kind:'escape',next:'scroll'},
+{t:'شروع کاری که مدام عقب انداختی',d:'اولین قدم سخت، اما شاید راه را باز کند.',cost:40,kind:'meaning',next:'work'}]},
+{title:'غرفه دوم: چیزی که جا می‌ماند',kicker:'زمان، فقط عدد نیست',text:'بعد از انتخاب اول، بازار شکل دیگری گرفته. فروشنده‌ها چیزهایی را پیشنهاد می‌کنند که قیمتشان با انتخاب قبلی تو جور در می‌آید.',quote:'فروشنده: «بعضی چیزها را وقتی می‌خری، تازه می‌فهمی چه چیز دیگری را نخریده‌ای.»',choices:[
+{t:'یک استراحت واقعی',d:'نه فرار؛ چند دقیقه برای نفس کشیدن و برگشتن.',cost:20,kind:'rest',next:'rest'},
+{t:'کمک به یک غریبه',d:'وقت گذاشتن برای مسئله‌ای که مال تو نیست.',cost:35,kind:'people',next:'help'},
+{t:'پاداش فوری و کوچک',d:'لذت سریع، بدون وعده فردا.',cost:15,kind:'escape',next:'treat'}]},
+{title:'حراجِ فرصت',kicker:'این پیشنهاد فقط یک بار است',text:'صدای زنگ بازار بلند می‌شود. فرصتی پیش آمده که می‌تواند یک چیز مهم را جلو ببرد؛ اما قیمتش بالاست. اگر زمانت کم باشد، شاید دیگر نتوانی انتخابش کنی.',quote:'تابلو: «فرصت‌ها همیشه با قیمت اعلام‌شده فروخته نمی‌شوند؛ گاهی با فرصت‌های دیگر معاوضه می‌شوند.»',choices:[
+{t:'برای هدفی مهم سرمایه‌گذاری کن',d:'یک کار دشوار را به پایان نزدیک کن.',cost:70,kind:'meaning',next:'goal'},
+{t:'با کسی وقت بگذران',d:'حضور، نه فقط پیام یا وعده.',cost:45,kind:'people',next:'together'},
+{t:'از حراج عبور کن',d:'لازم نیست هر فرصت را بخری.',cost:0,kind:'rest',next:'pass'}]},
+{title:'بدهیِ دقیقه‌ها',kicker:'زمانت رو به پایان است',text:'در انتهای بازار، غرفه‌ای هست که دقیقه‌های ازدست‌رفته را به تو نشان می‌دهد. نه برای سرزنش؛ فقط برای اینکه ببینی انتخاب‌هایت چه الگویی ساخته‌اند.',quote:'فروشنده: «قرار نبود همه‌چیز را بخری. قرار بود بفهمی برای چه چیزی حاضر بودی هزینه بدهی.»',choices:[
+{t:'یک دقیقه برای مرور مسیر',d:'تصمیم‌ها را ببین، نه فقط عدد باقی‌مانده را.',cost:10,kind:'meaning',next:'review'},
+{t:'آخرین لحظه را با دیگری تقسیم کن',d:'اگر هنوز فرصت داری، به کسی توجه کن.',cost:20,kind:'people',next:'share'},
+{t:'بدون خرید از بازار خارج شو',d:'گاهی نجات زمان، خودش انتخاب است.',cost:0,kind:'rest',next:'leave'}]}
+];
+let routeNotes=[];
+function focusText(){let arr=[['people','رابطه'],['meaning','هدف'],['rest','آرامش'],['escape','فرار']].sort((a,b)=>state[b[0]]-state[a[0]]);return state.spent===0?'هنوز معلوم نیست':arr[0][1]}
+function updateMeter(){ $('time').textContent=state.minutes;$('focus').textContent=focusText();$('bar').style.width=(state.minutes/240*100)+'%';}
+function renderStart(){updateMeter();$('stage').textContent='آغاز';$('game').innerHTML=`<p class="kicker">تجربه تعاملی مرتو • ۰۰۲</p><h1>قیمتِ یک دقیقه</h1><p class="lead">اگر زمان زندگی‌ات پول بود، امروز آن را کجا خرج می‌کردی؟</p><div class="scene"><b>قانون بازار:</b><p>با ۲۴۰ دقیقه وارد می‌شوی. انتخاب‌ها هزینه دارند و بعضی فرصت‌ها فقط وقتی در دسترس‌اند که هنوز وقت کافی داشته باشی. هیچ انتخابی «جواب درست» ندارد؛ فقط مسیر و پیامد دارد.</p></div><button class="btn primary" id="begin">وارد بازار شو</button>`;$('begin').addEventListener('click',()=>renderStage(0));}
+function renderStage(i){state.turn=i;updateMeter();$('stage').textContent='مرحله '+(i+1)+' از ۴';let sc=scenes[i];let available=sc.choices.filter(c=>c.cost<=state.minutes);if(!available.length)available=[{t:'از بازار بیرون برو',d:'دیگر زمان کافی برای خرید نمانده.',cost:0,kind:'rest',next:'leave'}];
+$('game').innerHTML=`<p class="kicker">${sc.kicker}</p><h1>${sc.title}</h1><p class="lead">${sc.text}</p><div class="scene">${sc.quote}</div><p class="note">هر انتخاب، هزینه و پیامد خودش را دارد.</p><div class="choices">${available.map((c,n)=>`<button class="choice" data-n="${n}"><span class="price">${c.cost===0?'رایگان':c.cost+' دقیقه'}</span><strong>${c.t}</strong><span>${c.d}</span></button>`).join('')}</div>`;
+$('game').querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>choose(available[+b.dataset.n],i)));
+}
+function choose(c,i){state.minutes-=c.cost;state.spent+=c.cost;state[c.kind]+=c.cost===0?1:c.cost;state.choices.push(c.t);routeNotes.push(c.next);updateMeter();
+let narration={
+warm:'صدای آن آدم، بازار را برای لحظه‌ای از حالت معامله بیرون آورد.',
+scroll:'صفحه‌ها تمام شدند؛ اما انگار هنوز چیزی منتظر بود که ببینی.',
+work:'شروع کوچک بود، ولی حالا کار دیگر فقط یک فکر دور نیست.',
+rest:'برای چند دقیقه، هیچ غرفه‌ای تو را صدا نزد.',
+help:'وقتی وقتت را بخشیدی، مسئله‌ای بیرون از خودت کمی سبک‌تر شد.',
+treat:'لذت کوتاه بود؛ کوتاهی‌اش لزوماً آن را بی‌ارزش نمی‌کرد.',
+goal:'یک قدم واقعی برداشته شد؛ بهایش هم واقعی بود.',
+together:'زمانی که با دیگری بودی، دیگر قابل ذخیره‌کردن نبود.',
+pass:'از کنار پیشنهاد گذشتی؛ بازار هم برایت باز ماند.',
+review:'به جای خرید، به الگوی خرج‌کردنت نگاه کردی.',
+share:'آخرین دقیقه‌ها را تنها نگه نداشتی.',
+leave:'از بازار بیرون رفتی؛ زمان را نمی‌شد پس گرفت، اما خرید دیگری هم لازم نبود.'
+};
+let next=i+1;
+if(state.minutes<15&&i<3)next=3;
+if(i===3){renderEnding(c.next,narration[c.next]);return;}
+$('game').innerHTML=`<p class="kicker">رسیدِ انتخاب</p><h2>${c.t}</h2><div class="ending">${narration[c.next]||'انتخابت در مسیر ثبت شد.'}</div><p>هزینه این انتخاب: <b>${c.cost} دقیقه</b></p><p class="note">زمان باقی‌مانده: ${state.minutes} دقیقه</p><button class="btn primary" id="continue">ادامه در بازار</button>`;
+$('continue').addEventListener('click',()=>renderStage(next));
+}
+function renderEnding(last,story){updateMeter();$('stage').textContent='پایان';let best=[['people','رابطه'],['meaning','هدف'],['rest','آرامش'],['escape','سرگرمی/فرار']].sort((a,b)=>state[b[0]]-state[a[0]])[0][1];
+let title,body;
+if(state.people>=state.meaning&&state.people>=state.escape&&state.people>=state.rest){title='بازاری که در آن آدم‌ها را خریدی؟';body='بیشترین وقتت را صرف حضور و ارتباط کردی. این پایان نمی‌گوید رابطه همیشه مهم‌تر است؛ فقط نشان می‌دهد در این مسیر، برای آدم‌ها وقت گذاشتی.'}
+else if(state.meaning>=state.escape&&state.meaning>=state.rest){title='چیزی که به جلو بردی';body='بخش زیادی از وقتت را صرف هدف و کار کردی. نتیجه شاید کامل نباشد، اما از بازار با قدمی واقعی بیرون آمدی؛ نه فقط با نیت انجام‌دادن.'}
+else if(state.escape>=state.rest){title='صفحه‌ای که تمام نمی‌شد';body='زمان زیادی به لذت فوری و فرارهای کوچک رسید. این انتخاب لزوماً بد نیست؛ سؤال این است که آیا آن لذت را انتخاب کردی، یا فقط در ادامه‌اش افتادی؟'}
+else{title='خریدارِ سکوت';body='به استراحت و مکث بها دادی. گاهی نرفتن به هر حراج، انتخابی آگاهانه است؛ به شرطی که مکث، راه بازگشت باشد نه پنهان‌شدن همیشگی.'}
+$('game').innerHTML=`<p class="kicker">بازار بسته شد</p><h1>${title}</h1><p class="lead">${body}</p><div class="scene"><b>رسید نهایی</b><p>زمان خرج‌شده: ${state.spent} دقیقه</p><p>زمان باقی‌مانده: ${state.minutes} دقیقه</p><p>بیشترین سهم در مسیر تو: ${best}</p></div><p>${story||'از بازار بیرون آمدی.'}</p><div class="ending">«تو زمانت را صرف چیزهایی کردی که انتخاب کردی؛ اما همیشه می‌توانی درباره انتخاب بعدی دوباره تصمیم بگیری.»</div><div class="scene"><b>نگاهی کوتاه</b><p>در زندگی واقعی، زمان و ارزش انتخاب‌ها به این سادگی قابل اندازه‌گیری نیستند. بازی از محدودیت زمان به‌عنوان استعاره استفاده می‌کند؛ نه اینکه بگوید سرگرمی، استراحت، رابطه یا کار ارزش عددی ثابتی دارند.</p></div><div class="actions"><button class="btn primary" id="again">از اول بازی کن</button><button class="btn secondary" id="copy">کپی رسید بازی</button></div>`;
+$('again').addEventListener('click',reset);$('copy').addEventListener('click',async()=>{let t='رسید بازی مرتو «قیمتِ یک دقیقه»\\nزمان خرج‌شده: '+state.spent+' دقیقه\\nمسیر: '+state.choices.join(' ← ');try{await navigator.clipboard.writeText(t);$('copy').textContent='رسید کپی شد'}catch(e){$('copy').textContent=t}});
+}
+function reset(){state.minutes=240;state.turn=0;state.spent=0;state.rest=0;state.people=0;state.meaning=0;state.escape=0;state.choices=[];state.debt=0;routeNotes=[];renderStart()}
+renderStart();
+</script></body></html>
